@@ -266,14 +266,22 @@ function truckPaint(seed) {
 
 // The silhouette. She is never a model the player is allowed to look at:
 // a soft-edged alpha card, and the fog is always in front of her.
-function figure() {
+// Three poses, swapped between appearances rather than animated. At the draw
+// distance she is a dozen pixels tall, so a changed stance reads as "she moved"
+// far more strongly than any interpolation would — and nothing ever tweens,
+// which keeps her from becoming a thing the player can study.
+function figure(variant = 0) {
   const s = surface(64);
+  const headShift = [0, 0.055, -0.03][variant];      // turned away, turned toward
+  const flare = [0.55, 0.44, 0.66][variant];         // skirt, or just distance
+  const lean = [0, 0.012, -0.008][variant];
   for (let y = 0; y < 64; y++) {
     for (let x = 0; x < 64; x++) {
-      const nx = (x - 32) / 32, ny = y / 64;
+      const ny = y / 64;
+      const nx = (x - 32) / 32 - lean * (1 - ny) * 8;
       // a shape that reads as a standing person and resolves into nothing
-      const width = 0.10 + (ny > 0.22 ? (ny - 0.22) * 0.55 : 0) + (ny < 0.16 ? 0.04 : 0);
-      const head = Math.hypot(nx, (ny - 0.11) * 2.6) < 0.17;
+      const width = 0.10 + (ny > 0.22 ? (ny - 0.22) * flare : 0) + (ny < 0.16 ? 0.04 : 0);
+      const head = Math.hypot(nx - headShift, (ny - 0.11) * 2.6) < 0.17;
       const bodyShape = Math.abs(nx) < width && ny > 0.14;
       const inside = head || bodyShape;
       if (!inside) { px(s, x, y, 0, 0, 0, 0); continue; }
@@ -316,7 +324,7 @@ export function buildTextures(renderer) {
     field: field(59),
     gravel: gravel(61),
     truck: truckPaint(73),
-    figure: figure(),
+    figure: figure(0), figureB: figure(1), figureC: figure(2),
     lamp: lampCard(),
   };
   const out = {};

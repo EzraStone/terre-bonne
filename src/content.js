@@ -109,6 +109,42 @@ export const LINES = {
   ],
 };
 
+// What Ray says into the recorder between the stops, because the walk is long
+// and there is nobody else. Keyed loosely — the game picks by state and loop and
+// never repeats one. Grief is the payload; these are where most of it lives.
+export const IDLE = {
+  any: [
+    ['RAY', 'Eight months. People say it like it is a long time. It is not a long time. It is nothing.'],
+    ['RAY', 'Her sister calls on Sundays. I let it ring and then I call back Monday so it looks like I was busy.'],
+    ['RAY', 'I still buy the yogurt she liked. I do not eat it. I throw it out and buy it again.'],
+    ['RAY', 'I could not tell you the last normal Tuesday we had. That is the part nobody warns you about — you do not know the ordinary days are the last ones.'],
+    ['RAY', 'Everybody at the funeral said she was in a better place. Not one of them would trade.'],
+  ],
+  legend: [
+    ['RAY', 'It is not a bad night, honestly. Cool. Quiet. Junie would have hated it out here.'],
+    ['RAY', 'If she is walking out here looking for him after two hundred years, then it works. Then it is real. Then you can look for somebody.'],
+    ['RAY', 'That is all I want. Somebody to still be looking.'],
+    ['RAY', 'Preacher told me grief is love with nowhere to go. I nodded. I wanted to ask him where he thought it went.'],
+  ],
+  record: [
+    ['RAY', 'This light is worse and I can see more. I do not know what to do with that.'],
+    ['RAY', 'Junie would have read every one of these signs. She read plaques at rest stops. Out loud. To me.'],
+    ['RAY', 'I have got a recorder full of a man talking to himself in a swamp. That is what I have got.'],
+    ['RAY', 'I am not scared. That is the thing. I keep waiting to be scared and instead I am just sad, and I do not think that is a malfunction.'],
+    ['RAY', 'Whoever is out there past the light — I am not asking you to come closer. I am asking you to still be there.'],
+  ],
+  loop2: [
+    ['RAY', 'Same boardwalk. Same sign. The phone still says two o\'clock and the battery has not moved either.'],
+    ['RAY', 'I should be frightened by that. I am mostly relieved. Nothing out here is going anywhere.'],
+    ['RAY', 'If it is two o\'clock forever then she has not been gone eight months yet. Do the math on that.'],
+  ],
+  loop3: [
+    ['RAY', 'No bugs. No frogs. No water moving. I can hear my own jacket.'],
+    ['RAY', 'I have been out here long enough that my hands have stopped being cold, which I do not think is a good sign.'],
+    ['RAY', 'Junie. If I stay out here long enough, does it count as looking?'],
+  ],
+};
+
 // stop: which trail marker the artifact sits at. side: -1 left of the trail, +1 right.
 // belief: +1 warms toward Legend, -1 cools toward Record.
 // pairId groups a plaque with the document tucked behind it.
@@ -133,6 +169,31 @@ export const ARTIFACTS = [
       ['doc', 'NOTICE: Trail closed after dark following repeated incidents. Persons found on this property between sunset and sunrise may be cited for trespass.'],
       ['doc', 'Emergency: the nearest cell coverage is at the county road, 1.2 miles north.'],
       ['ray', 'One-point-two miles. Good to know.'],
+    ],
+  },
+
+  {
+    id: 'sign-donors', stop: 0.05, side: -1, kind: 'plaque', pairId: 'donors',
+    belief: +1, tex: 'plaque',
+    title: 'This boardwalk made possible by',
+    label: 'a donor plaque',
+    body: [
+      ['plaque', 'THIS BOARDWALK MADE POSSIBLE BY the Jackson County Historical Society, the Marianna Rotary Club, and the friends and family of the late Doyle W. Pittman.'],
+      ['plaque', 'Dedicated October 2004. "Preserving our shared heritage."'],
+      ['ray', 'Our shared heritage. Somebody sat in a room and picked those two words on purpose.'],
+    ],
+  },
+  {
+    id: 'doc-clipboard', stop: 0.05, side: -1, kind: 'document', pairId: 'donors',
+    belief: -1, tex: 'paper',
+    title: 'Volunteer log sheet, in a plastic sleeve on the rail',
+    label: 'a volunteer log',
+    body: [
+      ['doc', 'OCT — GHOST WALK ATTENDANCE: 14 tours, 411 visitors, $2,466 to the Society.'],
+      ['doc', 'REST OF YEAR — school groups: 2. Genealogy visits: 6. General: "few."'],
+      ['doc', 'Note to next volunteer: people ask about the bride. Nobody has ever asked me about the house.'],
+      ['ray', 'Four hundred people in one month for the girl on fire.'],
+      ['ray', 'Two school buses a year for everything else that happened here.'],
     ],
   },
 
@@ -165,6 +226,35 @@ export const ARTIFACTS = [
   },
 
   {
+    id: 'sign-river', stop: 0.15, side: 1, kind: 'plaque', pairId: 'river',
+    belief: +1, tex: 'plaque',
+    title: 'The Chipola',
+    label: 'a river sign',
+    body: [
+      ['plaque', 'The Chipola rises in Alabama and runs sixty miles to the Apalachicola. Its floodplain forest supports cypress, tupelo, and one of the richest freshwater mussel communities in North America.'],
+      ['plaque', 'Early settlers found the bottomland here so fertile they named their holding Terre Bonne — French for "good earth."'],
+      ['ray', 'Found it. Found the bottomland. Like it was sitting out.'],
+    ],
+    loop3: [
+      ['plaque', 'Early settlers found the bottomland here so fertile they named their holding Terre Bonne — French for "good earth."'],
+      ['ray', 'Good earth. That is a compliment somebody paid to dirt while standing on top of what it cost.'],
+    ],
+  },
+  {
+    id: 'doc-deed', stop: 0.15, side: 1, kind: 'document', pairId: 'river',
+    belief: -1, tex: 'paper',
+    title: 'Deed of sale, 1834 — transcript, stapled',
+    label: 'a deed transcript',
+    body: [
+      ['doc', 'KNOW ALL MEN BY THESE PRESENTS that for the sum of eleven thousand four hundred dollars there is conveyed the tract known as TERRE BONNE, together with all improvements, stock, tools, and the negroes thereon, being twenty-six in number, to wit —'],
+      ['doc', 'and here the transcript ends. The next page was not photocopied.'],
+      ['ray', 'Together with. Same sentence as the tools.'],
+      ['ray', 'Twenty-six. Somebody stopped copying right before the names.'],
+    ],
+    note: 'Composite wording drawn from period deed conventions, not a specific document.',
+  },
+
+  {
     id: 'sign-fork', stop: 0.20, side: 1, kind: 'plaque', pairId: 'fork',
     belief: +1, tex: 'plaque',
     title: 'Trail map',
@@ -185,6 +275,20 @@ export const ARTIFACTS = [
       ['ray', 'The quarter.'],
       ['ray', 'That\'s a word for a place people lived.'],
     ],
+  },
+
+  {
+    id: 'doc-sherds', stop: 0.25, side: -1, kind: 'document', pairId: null,
+    belief: -1, tex: 'paper', record: true,
+    title: 'Archaeological site tag, weathered, wired to a stake',
+    label: 'a site tag',
+    body: [
+      ['doc', 'SITE 8JA— (number illegible). SURFACE SCATTER, QUARTER AREA. Whiteware sherd, transfer-printed, mended. Two clay marbles. A brass thimble. Bone-handled toothbrush. Colonoware fragment, hand-built.'],
+      ['doc', 'Assemblage indicates domestic occupation. Not excavated. No interpretive signage recommended at this time.'],
+      ['ray', 'Marbles.'],
+      ['ray', 'Somebody\'s kid lost two marbles in this dirt and a hundred and eighty years later that is the whole record of him. And they wrote "no signage recommended."'],
+    ],
+    note: 'Composite assemblage typical of quarter-site archaeology; not a specific catalogued site.',
   },
 
   {
@@ -235,6 +339,31 @@ export const ARTIFACTS = [
   },
 
   {
+    id: 'sign-family', stop: 0.35, side: 1, kind: 'plaque', pairId: 'family',
+    belief: +1, tex: 'plaque',
+    title: 'The Bellamy family',
+    label: 'a genealogy panel',
+    body: [
+      ['plaque', 'EDWARD C. BELLAMY and his wife ANN came to Jackson County from North Carolina in the 1820s. Their son SAMUEL married ELIZABETH JANE CROOM in 1836. The family were planters, merchants, and public men.'],
+      ['plaque', 'Their story is remembered today in one of Florida\'s most enduring legends.'],
+      ['ray', 'Planters, merchants, and public men. Three words doing an enormous amount of work.'],
+    ],
+  },
+  {
+    id: 'letter-elizabeth', stop: 0.35, side: 1, kind: 'document', pairId: 'family',
+    belief: -1, tex: 'paper',
+    title: 'Letter, E. Croom to S. Bellamy, spring 1836 — transcript',
+    label: 'a second transcript',
+    body: [
+      ['doc', 'You ask what I am afraid of and I will tell you plainly, since you have asked plainly. I am afraid of the fever season. Mother says a girl who marries into the bottomland marries the bottomland.'],
+      ['doc', 'I am not afraid of you. Do not read this as that. I am seventeen and I would like to see thirty, and I have no way to arrange it, and neither have you.'],
+      ['ray', '"I would like to see thirty."'],
+      ['ray', 'She knew. She wrote it down a year before it took her and everyone since has decided she died of a candle.'],
+    ],
+    note: 'Fictionalised past what the record supports — no such letter survives.',
+  },
+
+  {
     id: 'ledger-1', stop: 0.40, side: -1, kind: 'document', pairId: null,
     belief: -1, tex: 'paper', ledger: true, record: true,
     title: 'Terre Bonne estate inventory — leaf one',
@@ -273,6 +402,44 @@ export const ARTIFACTS = [
       ['ray', 'That\'s the whole county in one line. Nobody asked for it. It just got done, and then it got quiet, and then somebody made up a girl on fire so there\'d be something nicer to talk about.'],
     ],
     note: 'Names in this ledger are fictional composites, not individuals lifted from archives.',
+  },
+
+  {
+    id: 'sign-ghostwalk', stop: 0.45, side: -1, kind: 'plaque', pairId: 'ghostwalk',
+    belief: +1, tex: 'plaque',
+    title: 'Bellamy Bridge Ghost Walk — every October',
+    label: 'an event board',
+    body: [
+      ['plaque', 'JOIN US! Lantern-lit walks each October. Hear the tragic tale of the Bride of Bellamy Bridge, told on the very ground where she is said to walk. Refreshments. All ages. $5.'],
+      ['ray', 'All ages. Five dollars.'],
+      ['ray', 'I paid twelve for the documentary and drove two hours, so I am not going to stand here and be superior about it.'],
+    ],
+  },
+  {
+    id: 'doc-origin', stop: 0.45, side: -1, kind: 'document', pairId: 'ghostwalk',
+    belief: -1, tex: 'paper',
+    title: 'Newspaper feature, 1990s — clipping, sun-bleached',
+    label: 'a bleached clipping',
+    body: [
+      ['doc', 'WHERE DID OUR GHOST COME FROM? — Local historians trace the burning-bride story not to 1837 but to a novel published decades later, whose author borrowed the Bellamy name and invented the rest. The fire, the gown, the wedding night: all fiction.'],
+      ['doc', 'The tale was repeated until it became local memory. "It is a good story," one Society member told this paper. "People need a good story."'],
+      ['ray', 'People need a good story.'],
+      ['ray', 'Yeah. That is exactly what I drove down here for. That is the whole reason I am standing in a swamp at two in the morning with a tape recorder.'],
+    ],
+  },
+  {
+    id: 'doc-descendant', stop: 0.45, side: 1, kind: 'document', pairId: null,
+    belief: -1, tex: 'paper', record: true,
+    title: 'Printed email, laminated, cable-tied to the post',
+    label: 'a laminated email',
+    body: [
+      ['doc', 'To the Historical Society — I am writing again about the interpretive signage. My family has been in this county as long as yours has. The people my great-great-grandmother was held with are not on any marker here.'],
+      ['doc', 'I am not asking you to take the ghost down. I am asking you to add one sign. I have offered to pay for it twice.'],
+      ['doc', 'Somebody printed this out, laminated it, and zip-tied it to a post themselves.'],
+      ['ray', 'Twice.'],
+      ['ray', 'She offered to pay for it twice.'],
+    ],
+    note: 'Fictional composite. Real descendant advocacy of this kind is ongoing across the South and deserves to be consulted directly.',
   },
 
   {

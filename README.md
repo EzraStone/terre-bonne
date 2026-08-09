@@ -31,7 +31,12 @@ Needs WebGL2 and a mouse (pointer lock). Click the frame to capture the cursor.
 | hold `F` | pray |
 | hold `X` | stay (at the bridge, loop three) |
 | `R` | recorder |
-| `Esc` | put down what you are reading / release the cursor |
+| `Esc` | put down what you are reading / pause |
+
+Mouse sensitivity, invert-Y, subtitle size and volume are under **Options**, on
+the title screen and in the pause menu, and persist between sessions. Brightness
+is deliberately not adjustable. Endings you have found are remembered and listed
+on the title screen.
 
 ## The mechanic
 
@@ -52,12 +57,23 @@ plaque, the light warms. Read the obituary, the survey, the ledger, the light
 goes cold. You can read both. You cannot hold both: the most recent reading
 wins, and what came before only softens how hard the light swings.
 
+Belief also decays. Conviction in the record slides back toward the boundary
+whenever Ray is not reading evidence — it stops just short of flipping, so the
+swing is always yours to make, but holding the cold takes effort. The
+comfortable version is the trap; it is also the resting state.
+
 **Prayer costs a memory.** Hold `F`. In Legend state it does nothing mechanical
-— the breathing steadies, the camera sway calms, and that is all it is. In
-Record state it works: it quiets the thing in the fog and opens the way forward,
-and each true prayer replaces a softened memory of Junie with the accurate one.
-The first costs him the way he remembers her laugh. The fourth costs him the
-last thing he actually said to her, which was not kind.
+— the breathing steadies, the camera sway calms, and that is all it is.
+
+In Record state the swamp closes on him continuously: the draw distance
+tightens, the sway builds, something circles closer and more often, and walking
+slows to a quarter speed as the pressure peaks. It is never a wall — he can
+always push on, it just costs him the will to do it. Prayer is the only thing
+that pushes it back, and each true prayer replaces a softened memory of Junie
+with the accurate one. The soft versions are laid down across the outbound walk,
+an hour before anything takes them. The first costs him the way he remembers her
+laugh. The fourth costs him the last thing he actually said to her, which was
+not kind.
 
 **The laugh** fires every time Ray accepts an easy explanation. Occurrence one
 is seventy percent barred owl and genuinely ambiguous. By the third it is
@@ -78,6 +94,7 @@ anything had happened. It was always on it.
 
 ```
 index.html          shell + DOM text layer
+test/run.mjs        52 playthrough assertions, driven in a real browser
 src/gl.js           240p framebuffer, affine UVs, vertex snapping, Bayer dither, fog
 src/textures.js     every texture, generated at runtime, 64–128px, palette-locked
 src/geometry.js     mesh builder; world-space batching, baked vertex lighting
@@ -89,6 +106,11 @@ src/ui.js           subtitles, reader, recorder, endings
 docs/design-doc.html  the source document
 ```
 
+Run them with `npm test` — it serves the game itself and drives a headless
+Chromium through every ending trigger, the belief rule, the dread/prayer loop
+and the settings that persist. Needs `npm i -D playwright`; set `CHROMIUM_PATH`
+to point at an existing browser.
+
 ### Render spec, as built
 
 - 320 × 240 internal, integer upscale, point-sampled; 640 × 480 unlock on the title screen
@@ -98,7 +120,7 @@ docs/design-doc.html  the source document
 - 15-bit colour, ordered Bayer 4×4 dither
 - Baked vertex lighting; the flashlight is the only runtime light; no dynamic shadows
 - 64–128 px textures, point filtering, no mipmaps
-- One figure in the whole game
+- One figure in the whole game, in three poses that swap between appearances and never tween
 
 **Hard rule, enforced in code:** Elizabeth is never rendered inside the fog
 plane. She is placed at 95% of the current draw distance every frame, so running

@@ -11,7 +11,7 @@ import { buildTextures } from './textures.js';
 import { billboardMesh } from './geometry.js';
 import { Trail, buildWorld, buildArtifactProps, placeArtifacts } from './world.js';
 import { Audio } from './audio.js';
-import { MEMORIES, LINES, ENDINGS, CREDITS } from './content.js';
+import { MEMORIES, LINES, IDLE, ENDINGS, CREDITS } from './content.js';
 import { UI } from './ui.js';
 
 const EYE = 1.65;
@@ -77,6 +77,8 @@ export class Game {
     this.dreadTick = 8;
     this.maxMile = 0;
     this.timers = [];
+    this.idleTimer = 34;
+    this.idleUsed = new Set();
     this.ledger = 0;
     this.laughs = 0;
     this.gateStage = 0;
@@ -85,7 +87,7 @@ export class Game {
     this.prayHold = 0;
     this.stayHold = 0;
     this.readHold = 0;
-    this.presence = { vis: 0, timer: 6, active: false };
+    this.presence = { vis: 0, timer: 6, active: false, pose: 0 };
     this.shapeNoteUsed = [false, false, false];
     this.fade = 1;
     this.fadeTarget = 1;
@@ -121,7 +123,7 @@ export class Game {
 
     canvas.addEventListener('click', () => {
       if (this.paused) { this.setPaused(false); return; }
-      if (this.phase === 'walk' && !this.ui.readerOpen) canvas.requestPointerLock();
+      if (this.phase === 'walk' && !this.ui.readerOpen) this.grabPointer();
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;
@@ -148,7 +150,15 @@ export class Game {
     this.paused = on;
     this.keys.clear();
     this.ui.setPausePanel(on);
-    if (!on) this.renderer.canvas.requestPointerLock();
+    if (!on) this.grabPointer();
+  }
+
+  // Chromium logs an error if you ask for a lock you already hold, and the
+  // request can reject outright when it arrives without a user gesture.
+  grabPointer() {
+    if (this.pointerLocked) return;
+    const r = this.renderer.canvas.requestPointerLock();
+    if (r && typeof r.catch === 'function') r.catch(() => { /* needs a click first */ });
   }
 
   quitToTitle() {
@@ -173,7 +183,7 @@ export class Game {
     this.ui.setHud(true);
     this.gateStage = 0;
     this.gateTimer = 1.2;
-    this.renderer.canvas.requestPointerLock();
+    this.grabPointer();
   }
 
   /* ------------------------------------------------------- belief & light */
@@ -288,7 +298,7 @@ export class Game {
 
   closeReader() {
     this.ui.closeReader();
-    if (this.phase === 'walk' || this.phase === 'gate') this.renderer.canvas.requestPointerLock();
+    if (this.phase === 'walk' || this.phase === 'gate') this.grabPointer();
   }
 
   nearTruck() {
@@ -393,6 +403,33 @@ export class Game {
     this.say([['', MEMORIES[i].soft]], 1.5);
   }
 
+  /* ------------------------------------------------------------- interiority */
+  // The stops carry the history. The walk between them is where the grief goes,
+  // and it was silent before this.
+  updateIdle(dt) {
+    if (this.phase !== 'walk' || this.ui.readerOpen) return;
+    this.idleTimer -= dt;
+    if (this.idleTimer > 0 || this.ui.current || this.ui.queue.length) return;
+
+    const pools = ['any', this.state];
+    if (this.loop === 2) pools.push('loop2');
+    if (this.loop >= 3) pools.push('loop3');
+
+    const options = [];
+    for (const key of pools) {
+      (IDLE[key] || []).forEach((line, i) => {
+        const id = key + i;
+        if (!this.idleUsed.has(id)) options.push([id, line]);
+      });
+    }
+    if (!options.length) { this.idleTimer = 999; return; }
+
+    const [id, line] = options[(Math.random() * options.length) | 0];
+    this.idleUsed.add(id);
+    this.say([line]);
+    this.idleTimer = 38 + Math.random() * 30;
+  }
+
   /* ------------------------------------------------------------- movement */
   updateWalk(dt) {
     const k = this.keys;
@@ -413,14 +450,20 @@ export class Game {
       let nz = this.p.z + (fz * fwd + rz * strafe) * speed * dt;
 
       // The corridor: swamp on both sides, and no invitation onto the water.
+      // The corridor: swamp on both sides, and no invitation onto the water.
+      // The last half-metre is soft — he wades, slows, and gives up on his own
+      // rather than striking an invisible pane of glass.
       const pr = this.trail.project(nx, nz);
       const onDeck = pr.s < this.trail.fromMiles(0.16);
-      const halfWidth = onDeck ? 1.0 : 3.0;
-      if (Math.abs(pr.lat) > halfWidth) {
+      const halfWidth = onDeck ? 1.05 : 3.4;
+      const soft = onDeck ? 0.25 : 0.6;
+      const over = Math.abs(pr.lat) - halfWidth;
+      if (over > 0) {
         const [px, pz] = this.trail.at(pr.s);
         const [tnx, tnz] = this.trail.normal(pr.s);
-        const clampedLat = Math.sign(pr.lat) * halfWidth;
-        nx = px + tnx * clampedLat; nz = pz + tnz * clampedLat;
+        const eased = halfWidth + soft * (1 - Math.exp(-over / soft));
+        const lat = Math.sign(pr.lat) * Math.min(Math.abs(pr.lat), eased);
+        nx = px + tnx * lat; nz = pz + tnz * lat;
       }
 
       const s = clamp(this.trail.project(nx, nz).s, -8, this.trail.length);
@@ -586,8 +629,12 @@ export class Game {
     if (p.timer <= 0) {
       p.timer = 14 + Math.random() * 22;
       p.active = !p.active;
-      if (p.active && !this.seen.has('presence')) { this.seen.add('presence'); this.say(LINES.presence, 2); }
-      if (p.active) this.audio.disturbance(2.5);
+      if (p.active) {
+        // She is never the same way round twice. Nothing tweens.
+        p.pose = (p.pose + 1 + ((Math.random() * 2) | 0)) % 3;
+        if (!this.seen.has('presence')) { this.seen.add('presence'); this.say(LINES.presence, 2); }
+        this.audio.disturbance(2.5);
+      }
     }
     p.vis = clamp(p.vis + (p.active ? dt * 0.7 : -dt * 1.1), 0, 1);
 
@@ -635,6 +682,7 @@ export class Game {
     if (this.phase === 'gate' || this.phase === 'walk') {
       if (!this.ui.readerOpen) this.updateWalk(dt);
       this.updateDread(dt);
+      this.updateIdle(dt);
       this.updatePrayer(dt);
       this.updateEndingHolds(dt);
       this.updatePresence(dt);
@@ -768,7 +816,8 @@ export class Game {
     if (this.presence.vis > 0.02) {
       const p = this.presence;
       const yawTo = Math.atan2(cx - p.x, cz - p.z);
-      R.draw(this.figureQuad, this.tex.figure, {
+      const poseTex = [this.tex.figure, this.tex.figureB, this.tex.figureC][p.pose];
+      R.draw(this.figureQuad, poseTex, {
         model: modelAt(p.x, 0, p.z, yawTo, 1 + p.vis * 0.02),
         alphaCut: 1 - p.vis * 0.9,
         doubleSided: true,
