@@ -26,7 +26,7 @@ export class UI {
     this.flash = 0;
 
     this.$('btn-start').onclick = () => game.begin();
-    this.$('btn-again').onclick = () => location.reload();
+    this.$('btn-again').onclick = () => game.quitToTitle();
     this.$('btn-cw').onclick = () => { this.title.classList.remove('show'); this.cw.classList.add('show'); };
     this.$('btn-cw-back').onclick = () => { this.cw.classList.remove('show'); this.title.classList.add('show'); };
 
@@ -38,12 +38,132 @@ export class UI {
         ? 'Internal res: 640 × 480'
         : 'Internal res: 320 × 240';
     };
+
+    this.pause = this.$('pause');
+    this.opts = this.$('opts');
+    this.optsFrom = 'title';
+
+    this.$('btn-resume').onclick = () => game.setPaused(false);
+    this.$('btn-quit').onclick = () => game.quitToTitle();
+    this.$('btn-opts').onclick = () => this.openOptions('title');
+    this.$('btn-pause-opts').onclick = () => this.openOptions('pause');
+    this.$('btn-opts-back').onclick = () => this.closeOptions();
+
+    this.loadSettings();
+    this.bindSettings();
+    this.renderFound();
+  }
+
+  /* -------------------------------------------------------------- settings */
+  loadSettings() {
+    const def = { sens: 1, invert: false, subs: 1, vol: 0.9 };
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('terrebonne.settings') || '{}'); }
+    catch (e) { saved = {}; }                    // corrupt storage is not fatal
+    this.settings = { ...def, ...saved };
+    this.applySettings();
+  }
+
+  saveSettings() {
+    try { localStorage.setItem('terrebonne.settings', JSON.stringify(this.settings)); }
+    catch (e) { /* private browsing; the game still runs, it just forgets */ }
+  }
+
+  applySettings() {
+    const s = this.settings;
+    this.subtitle.style.fontSize = (17 * s.subs).toFixed(1) + 'px';
+    if (this.game.audio && this.game.audio.master) {
+      this.game.audio.master.gain.value = s.vol;
+    }
+    this.$('opt-sens').value = s.sens;
+    this.$('opt-invert').checked = s.invert;
+    this.$('opt-subs').value = s.subs;
+    this.$('opt-vol').value = s.vol;
+    this.$('opt-sens-val').textContent = Number(s.sens).toFixed(2);
+    this.$('opt-subs-val').textContent = Number(s.subs).toFixed(2);
+    this.$('opt-vol-val').textContent = Number(s.vol).toFixed(2);
+  }
+
+  bindSettings() {
+    const on = (id, key, cast) => {
+      this.$(id).addEventListener('input', (e) => {
+        this.settings[key] = cast(e.target);
+        this.applySettings();
+        this.saveSettings();
+      });
+    };
+    on('opt-sens', 'sens', (t) => parseFloat(t.value));
+    on('opt-subs', 'subs', (t) => parseFloat(t.value));
+    on('opt-vol', 'vol', (t) => parseFloat(t.value));
+    on('opt-invert', 'invert', (t) => t.checked);
+  }
+
+  openOptions(from) {
+    this.optsFrom = from;
+    this.title.classList.remove('show');
+    this.pause.classList.remove('show');
+    this.opts.classList.add('show');
+  }
+
+  closeOptions() {
+    this.opts.classList.remove('show');
+    if (this.optsFrom === 'pause') this.pause.classList.add('show');
+    else this.title.classList.add('show');
+  }
+
+  setPausePanel(on) {
+    this.pause.classList.toggle('show', on);
+    if (!on) this.opts.classList.remove('show');
+  }
+
+  /* -------------------------------------------------- endings found so far */
+  static ENDING_ORDER = [
+    ['owl', 'Barred Owl'],
+    ['register', 'The Register'],
+    ['refusal', 'Always and Forever'],
+    ['zero', '0.00'],
+  ];
+
+  loadFound() {
+    try { return new Set(JSON.parse(localStorage.getItem('terrebonne.endings') || '[]')); }
+    catch (e) { return new Set(); }
+  }
+
+  recordFound(which) {
+    const found = this.loadFound();
+    found.add(which);
+    try { localStorage.setItem('terrebonne.endings', JSON.stringify([...found])); }
+    catch (e) { /* nothing to do; the walk still happened */ }
+    this.renderFound();
+  }
+
+  // Four endings and a 25-minute walk each: the title screen has to remember,
+  // or nobody sees more than one of them.
+  renderFound() {
+    const found = this.loadFound();
+    const el = this.$('found');
+    if (!found.size) { el.innerHTML = ''; return; }
+    const rows = UI.ENDING_ORDER.map(([key, name], i) => {
+      const n = String(i + 1).padStart(2, '0');
+      return found.has(key)
+        ? `<p class="got">${n} · <b>${name}</b></p>`
+        : `<p>${n} · ————</p>`;
+    }).join('');
+    el.innerHTML = `<p class="hd">Ways off the trail — ${found.size} of 4</p>${rows}`;
   }
 
   hidePanels() {
     this.title.classList.remove('show');
     this.cw.classList.remove('show');
     this.endingPanel.classList.remove('show');
+    this.pause.classList.remove('show');
+    this.opts.classList.remove('show');
+  }
+
+  showTitle() {
+    this.hidePanels();
+    this.renderFound();
+    this.title.classList.add('show');
   }
 
   setHud(on) { this.hud.classList.toggle('show', on); }

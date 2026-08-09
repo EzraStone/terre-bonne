@@ -27,9 +27,52 @@
     <div class="menu">
       <button id="btn-start" class="mbtn">Begin</button>
       <button id="btn-cw" class="mbtn ghost">Content warnings</button>
+      <button id="btn-opts" class="mbtn ghost">Options</button>
       <button id="btn-res" class="mbtn ghost">Internal res: 320 &times; 240</button>
     </div>
-    <p class="tiny quiet">WASD walk &middot; mouse look &middot; E read &middot; hold F pray &middot; R recorder &middot; Esc release cursor</p>
+    <p class="tiny quiet">WASD walk &middot; mouse look &middot; E read &middot; hold F pray &middot; R recorder &middot; Esc pause</p>
+    <div id="found"></div>
+  </section>
+
+  <!-- pause -->
+  <section id="pause" class="panel">
+    <p class="eyebrow">The clock still says 2:00</p>
+    <h2>Stopped on the trail</h2>
+    <div class="menu">
+      <button id="btn-resume" class="mbtn">Keep walking</button>
+      <button id="btn-pause-opts" class="mbtn ghost">Options</button>
+      <button id="btn-quit" class="mbtn ghost">Back to the gate</button>
+    </div>
+    <p class="tiny quiet">Nothing out there moves while you are in here.</p>
+  </section>
+
+  <!-- options -->
+  <section id="opts" class="panel">
+    <p class="eyebrow">Options</p>
+    <h2>Comfort settings</h2>
+    <div class="opt">
+      <label for="opt-sens">Mouse sensitivity</label>
+      <input id="opt-sens" type="range" min="0.3" max="2.5" step="0.05" value="1">
+      <span id="opt-sens-val" class="mono">1.00</span>
+    </div>
+    <div class="opt">
+      <label for="opt-invert">Invert vertical look</label>
+      <input id="opt-invert" type="checkbox">
+      <span></span>
+    </div>
+    <div class="opt">
+      <label for="opt-subs">Subtitle size</label>
+      <input id="opt-subs" type="range" min="0.8" max="1.6" step="0.05" value="1">
+      <span id="opt-subs-val" class="mono">1.00</span>
+    </div>
+    <div class="opt">
+      <label for="opt-vol">Volume</label>
+      <input id="opt-vol" type="range" min="0" max="1" step="0.05" value="0.9">
+      <span id="opt-vol-val" class="mono">0.90</span>
+    </div>
+    <p class="body quiet">Brightness is not adjustable. Not being able to confirm what you
+      saw is the game, not a defect in it.</p>
+    <div class="menu"><button id="btn-opts-back" class="mbtn">Back</button></div>
   </section>
 
   <!-- content warnings -->

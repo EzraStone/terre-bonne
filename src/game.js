@@ -94,6 +94,7 @@ export class Game {
     this.mile = 0;
     this.cine = null;
     this.recorderOpen = false;
+    this.paused = false;
     this.seen = new Set();
     for (const a of this.artifacts) a.read = false;
   }
@@ -119,23 +120,54 @@ export class Game {
     addEventListener('blur', () => this.keys.clear());
 
     canvas.addEventListener('click', () => {
+      if (this.paused) { this.setPaused(false); return; }
       if (this.phase === 'walk' && !this.ui.readerOpen) canvas.requestPointerLock();
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;
       document.body.classList.toggle('playing', this.pointerLocked);
+      const playing = this.phase === 'walk' || this.phase === 'gate';
+      if (!this.pointerLocked && playing && !this.ui.readerOpen && !this.paused) {
+        this.setPaused(true);
+      }
     });
     addEventListener('mousemove', (e) => {
-      if (!this.pointerLocked) return;
-      this.p.yaw -= e.movementX * 0.0022;
-      this.p.pitch = clamp(this.p.pitch - e.movementY * 0.0022, -1.2, 1.2);
+      if (!this.pointerLocked || this.paused) return;
+      const s = this.ui.settings;
+      const inv = s.invert ? -1 : 1;
+      this.p.yaw -= e.movementX * 0.0022 * s.sens;
+      this.p.pitch = clamp(this.p.pitch - e.movementY * 0.0022 * s.sens * inv, -1.2, 1.2);
     });
+  }
+
+  /* --------------------------------------------------------------- pausing */
+  // Esc is swallowed by the browser when it exits pointer lock, so the lock
+  // change is the signal rather than the keypress.
+  setPaused(on) {
+    if (this.phase !== 'walk' && this.phase !== 'gate') return;
+    this.paused = on;
+    this.keys.clear();
+    this.ui.setPausePanel(on);
+    if (!on) this.renderer.canvas.requestPointerLock();
+  }
+
+  quitToTitle() {
+    this.paused = false;
+    this.phase = 'title';
+    this.audio.tapeHiss(false);
+    this.audio.wildlife = 1;
+    this.audio.work = 0;
+    this.ui.setHud(false);
+    this.ui.clearLines();
+    this.ui.setRecorder(null);
+    this.ui.showTitle();
   }
 
   begin() {
     this.reset();
     this.audio.start();
     this.audio.resume();
+    this.ui.applySettings();      // volume needs the graph to exist first
     this.phase = 'gate';
     this.ui.hidePanels();
     this.ui.setHud(true);
@@ -499,6 +531,7 @@ export class Game {
       setTimeout(() => this.audio.shapeNote(2), 1500);
     }
     if (which === 'owl') this.audio.wildlife = 1;
+    this.ui.recordFound(which);
 
     const delay = which === 'refusal' ? 7200 : 2600;
     this.fadeTarget = 0;
@@ -596,6 +629,8 @@ export class Game {
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
 
+    if (this.paused) { this.render(now); requestAnimationFrame(this.frame); return; }
+
     if (this.phase === 'gate') this.updateGate(dt);
     if (this.phase === 'gate' || this.phase === 'walk') {
       if (!this.ui.readerOpen) this.updateWalk(dt);
@@ -610,6 +645,14 @@ export class Game {
     const target = this.state === 'legend' ? 1 : 0;
     this.lightMix = lerp(this.lightMix, target, 1 - Math.pow(0.02, dt));
     if (this.calm > 0) this.calm -= dt;
+
+    // The comfortable version is the trap, so comfort is also the resting state:
+    // conviction in the record decays toward the boundary whenever Ray is not
+    // looking at evidence. It stops at -0.05 and never flips the light for him —
+    // holding the cold is effort, but the swing is always the player's to make.
+    if (this.phase === 'walk' && this.belief < -0.05 && !this.ui.readerOpen) {
+      this.belief = Math.min(-0.05, this.belief + dt * 0.010);
+    }
 
     // The field is audible before it is visible and stays audible behind him.
     // It only exists in Record state, and it never approaches.
