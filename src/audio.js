@@ -211,39 +211,75 @@ export class Audio {
     return 1.9;
   }
 
-  // A young woman laughing. Pulsed formants, a little breath, no words.
+  // A young woman laughing. Each "ha" is a voiced source passed through the
+  // resonances of an open vowel, with an aspirated onset. The little timing and
+  // pitch differences keep it human without turning it into speech.
   woman(gain = 0.2, when = 0) {
+    if (!this.ready) return 0;
     const ctx = this.ctx, t0 = ctx.currentTime + when;
-    const pulses = 7;
-    for (let i = 0; i < pulses; i++) {
-      const t = t0 + i * 0.13 + Math.random() * 0.01;
-      const base = 300 - i * 9;
-      for (const [mult, amp] of [[1, 1], [2, 0.5], [3, 0.26], [4.6, 0.12]]) {
-        const o = ctx.createOscillator();
-        o.type = i % 2 ? 'triangle' : 'sawtooth';
-        o.frequency.setValueAtTime(base * mult, t);
-        o.frequency.exponentialRampToValueAtTime(base * mult * 0.86, t + 0.11);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(gain * amp * (1 - i / (pulses + 3)), t + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.115);
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass'; bp.frequency.value = 900 + mult * 260; bp.Q.value = 3.5;
-        o.connect(g).connect(bp).connect(this.master);
-        o.start(t); o.stop(t + 0.13);
+    const syllables = [
+      // offset, duration, pitch, end-pitch ratio, strength
+      [0.00, 0.13, 330, 1.10, 0.72],
+      [0.16, 0.14, 365, 1.04, 0.90],
+      [0.34, 0.15, 390, 0.94, 1.00],
+      [0.54, 0.16, 370, 0.88, 0.92],
+      [0.76, 0.18, 340, 0.82, 0.78],
+      [1.01, 0.24, 305, 0.76, 0.58],
+    ];
+
+    for (const [off, dur, pitch, fall, strength] of syllables) {
+      const t = t0 + off + (Math.random() - 0.5) * 0.008;
+      const f0 = pitch * (1 + (Math.random() - 0.5) * 0.035);
+
+      // A saw carries enough harmonics for the formants to shape into a vowel.
+      const voice = ctx.createOscillator();
+      voice.type = 'sawtooth';
+      voice.frequency.setValueAtTime(f0 * 0.96, t);
+      voice.frequency.exponentialRampToValueAtTime(f0, t + dur * 0.22);
+      voice.frequency.exponentialRampToValueAtTime(f0 * fall, t + dur);
+
+      const flutter = ctx.createOscillator();
+      flutter.frequency.value = 5.4 + Math.random() * 0.8;
+      const flutterDepth = ctx.createGain();
+      flutterDepth.gain.value = 4 + Math.random() * 2;
+      flutter.connect(flutterDepth).connect(voice.frequency);
+
+      const envelope = ctx.createGain();
+      envelope.gain.setValueAtTime(0.0001, t);
+      envelope.gain.exponentialRampToValueAtTime(gain * strength, t + 0.025);
+      envelope.gain.setValueAtTime(gain * strength * 0.82, t + dur * 0.55);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      voice.connect(envelope);
+
+      // Female /a/ formants. Parallel filters make the source read as one mouth,
+      // rather than several unrelated tones.
+      for (const [frequency, q, level] of [
+        [850, 5.0, 0.72], [1500, 6.5, 0.42], [2850, 9.0, 0.18],
+      ]) {
+        const formant = ctx.createBiquadFilter();
+        formant.type = 'bandpass';
+        formant.frequency.value = frequency * (1 + (Math.random() - 0.5) * 0.025);
+        formant.Q.value = q;
+        const formantGain = ctx.createGain();
+        formantGain.gain.value = level;
+        envelope.connect(formant).connect(formantGain).connect(this.master);
       }
-      // breath between the pulses
+
+      voice.start(t); voice.stop(t + dur + 0.03);
+      flutter.start(t); flutter.stop(t + dur + 0.03);
+
+      // A short, high breath before the voice supplies the "h" in each "ha".
       const br = ctx.createBufferSource(); br.buffer = this.noise;
       const brBP = ctx.createBiquadFilter(); brBP.type = 'bandpass';
-      brBP.frequency.value = 2200; brBP.Q.value = 1.2;
+      brBP.frequency.value = 2400; brBP.Q.value = 1.0;
       const brG = ctx.createGain();
       brG.gain.setValueAtTime(0.0001, t);
-      brG.gain.exponentialRampToValueAtTime(gain * 0.20, t + 0.02);
-      brG.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+      brG.gain.exponentialRampToValueAtTime(gain * strength * 0.16, t + 0.012);
+      brG.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(0.075, dur * 0.5));
       br.connect(brBP).connect(brG).connect(this.master);
-      br.start(t); br.stop(t + 0.12);
+      br.start(t); br.stop(t + dur);
     }
-    return 1.0;
+    return 1.3;
   }
 
   // THE LAUGH. Occurrence 1 is 70/30 owl. By the third it is 10/90, and close.
