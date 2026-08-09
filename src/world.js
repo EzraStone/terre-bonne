@@ -242,20 +242,53 @@ export function buildWorld(trail) {
   b.group('field', 'record');
   {
     const fs = trail.fromMiles(0.40);
-    for (let d = -12; d < 26; d += 6) {
+    // The swamp thins. The ground opens out further than anything else in the
+    // game is allowed to, because the point of this stop is that it is a place,
+    // not a corridor — and that it is being worked.
+    for (let d = -16; d < 34; d += 5) {
       const [x, z] = trail.at(fs + d);
-      b.ceiling(x, 0.06, z, 30, 6, 0.18);
+      b.ceiling(x, 0.06, z, 44, 5, 0.16);
     }
   }
   b.group('bark', 'record');
   {
-    // fence posts and a cart track: a working landscape, at night, still going
     const fs = trail.fromMiles(0.40);
-    for (let i = 0; i < 26; i++) {
-      const s = fs - 10 + i * 1.6;
+    // Fence line on both sides, a cart track, and the crop rows themselves:
+    // cotton stood in hills, in ground that is swamp again now.
+    for (let i = 0; i < 30; i++) {
+      const s = fs - 14 + i * 1.6;
       const [x, z] = trail.at(s);
       const [nx, nz] = trail.normal(s);
-      b.box(x + nx * 7.5, 0, z + nz * 7.5, 0.14, 1.1 + (i % 3) * 0.1, 0.14, 1, 0.8);
+      for (const side of [-1, 1]) {
+        // inside the Record draw distance, or it may as well not be built
+        b.box(x + nx * 6.4 * side, 0, z + nz * 6.4 * side, 0.13, 1.05 + (i % 3) * 0.12, 0.13, 1, 0.8);
+        if (i % 3 === 0) {   // the rail between the posts
+          b.box(x + nx * 6.4 * side + 0.4, 0.85, z + nz * 6.4 * side, 1.6, 0.09, 0.09, 1, 0.7);
+        }
+      }
+    }
+    // A hoe left standing in the dirt, and a cart with one wheel off the axle.
+    const [cx, cz] = trail.place(0.41, 3.9);
+    b.box(cx, 0, cz, 0.09, 1.35, 0.09, 1, 0.9);
+    const [wx, wz] = trail.place(0.395, -4.6);
+    b.box(wx, 0.35, wz, 1.5, 0.5, 2.6, 1, 0.8);
+    b.column(wx - 0.85, wz + 0.9, 0.1, 0.55, 0.55, 8, 1, 0.7);
+    b.column(wx + 0.85, wz + 0.9, 0.1, 0.55, 0.55, 8, 1, 0.7);
+  }
+  b.group('palmetto', 'record');
+  {
+    // Crop rows as alpha cards — the same cheap plant trick, in ranks this time,
+    // which is exactly what makes it read as cultivated instead of grown.
+    const fs = trail.fromMiles(0.40);
+    for (let row = 0; row < 26; row++) {
+      const s = fs - 13 + row * 1.8;
+      const [x, z] = trail.at(s);
+      const [nx, nz] = trail.normal(s);
+      for (let c = -6; c <= 6; c++) {
+        if (Math.abs(c) < 2) continue;                 // the path stays clear
+        const lat = c * 0.95 + Math.sin(row * 1.7) * 0.2;
+        b.cross(x + nx * lat, 0, z + nz * lat, 0.9, 0.95 + ((row + c) % 3) * 0.12, row * 0.4);
+      }
     }
   }
 

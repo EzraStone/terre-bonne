@@ -72,11 +72,14 @@ export class Game {
     this.reachedBridge = false;
     this.prayers = 0;
     this.memoriesLost = 0;
+    this.seeded = new Set();
+    this.dread = 0;
+    this.dreadTick = 8;
+    this.maxMile = 0;
+    this.timers = [];
     this.ledger = 0;
     this.laughs = 0;
     this.gateStage = 0;
-    this.blocked = false;
-    this.blockCleared = false;
     this.bobPhase = 0;
     this.stepAccum = 0;
     this.prayHold = 0;
@@ -147,7 +150,8 @@ export class Game {
   get drawDistance() {
     // Legend 20 m · Record 12 m · loop three drops to 8 m.
     const base = lerp(12, 20, clamp(this.lightMix, 0, 1));
-    return this.loop >= 3 ? Math.min(base, 8) : base;
+    const d = this.loop >= 3 ? Math.min(base, 8) : base;
+    return d * (1 - 0.3 * this.dread);   // it closes in as the pressure builds
   }
 
   // You can read both. You cannot hold both: the thing most recently read wins,
@@ -165,6 +169,22 @@ export class Game {
   /* --------------------------------------------------------------- lines */
   say(lines, delay = 0) {
     this.ui.queueLines(lines, delay);
+  }
+
+  // Game-time scheduling. Wall-clock timers fire while the player is nose-deep
+  // in a document; these wait until he has looked up and is walking again.
+  after(seconds, fn) {
+    this.timers.push({ t: seconds, fn });
+  }
+
+  updateTimers(dt) {
+    if (this.ui.readerOpen || this.phase === 'ending') return;
+    for (const timer of this.timers) timer.t -= dt;
+    const due = this.timers.filter(x => x.t <= 0);
+    if (due.length) {
+      this.timers = this.timers.filter(x => x.t > 0);
+      for (const d of due) d.fn();
+    }
   }
 
   /* ------------------------------------------------------------ artifacts */
@@ -196,8 +216,11 @@ export class Game {
     if (this.nearTruck()) {
       // Turning around before the bridge is the hidden ending: he never finds out,
       // and nobody is hurt. Walking out after it is the story the town tells.
-      if (this.loop === 1 && !this.reachedBridge && this.gateStage >= 3) this.end('zero');
-      else if (this.reachedBridge || this.loop > 1) this.end('owl');
+      // 0.00 is the gate ending, not a general escape hatch: he has to turn
+      // around before the trail has shown him anything. Past the boardwalk he
+      // has already seen too much, and walking out is Ending 01 instead.
+      if (this.loop === 1 && this.maxMile < 0.12 && this.gateStage >= 4) this.end('zero');
+      else this.end('owl');
       return;
     }
 
@@ -214,11 +237,17 @@ export class Game {
         this.ledger++;
         if (this.ledger === 3) this.say(LINES.ledgerDone, 1.0);
       }
-      // The laugh fires every time Ray accepts an easy explanation.
+      // The laugh fires every time Ray accepts an easy explanation — but on
+      // game time, so it lands when he looks up from the sign, not while he is
+      // still reading it.
       if (a.kind === 'plaque') {
+        // The gate already spent occurrences one and two; every one after that
+        // is the third mix — 10/90, and close.
         const n = this.laughs++;
-        if (n === 2) this.audio.stinger();
-        setTimeout(() => this.audio.laugh(Math.min(n + 2, 2)), 2200);
+        this.after(1.6, () => {
+          if (n === 0) this.audio.stinger();   // marked loud point, one of two
+          this.audio.laugh(2);
+        });
       }
     }
     this.ui.openReader(a, this.loop);
@@ -234,6 +263,47 @@ export class Game {
     const [tx, tz] = this.trail.at(-1);
     const [nx, nz] = this.trail.normal(-1);
     return Math.hypot(this.p.x - (tx + nx * 4.5), this.p.z - (tz + nz * 4.5 + 5)) < 3.2;
+  }
+
+  /* ----------------------------------------------------------------- dread */
+  // Prayer used to be a key that opened one door. It is pressure relief now:
+  // in Record state the swamp closes on Ray continuously — the draw distance
+  // tightens, the sway builds, the thing in the fog comes around more often —
+  // and prayer is the only thing that pushes it back. The player should want it
+  // before they are told it exists, so that the cost lands when it arrives.
+  updateDread(dt) {
+    if (this.phase !== 'walk') return;
+
+    if (this.state !== 'record') {
+      // Comfort is not just safe, it is restful. Nothing accumulates in the warm.
+      this.dread = Math.max(0, this.dread - dt * 0.25);
+      return;
+    }
+
+    if (this.calm > 0) {
+      this.dread = Math.max(0, this.dread - dt * 0.5);
+    } else {
+      const rate = 0.014 + (this.loop - 1) * 0.007;
+      this.dread = clamp(this.dread + dt * rate * (this.outbound ? 1 : 0.6), 0, 1);
+    }
+
+    // It circles closer as it builds, and it is never rendered.
+    this.dreadTick -= dt;
+    if (this.dreadTick <= 0 && this.dread > 0.25) {
+      this.dreadTick = lerp(14, 3.5, this.dread) * (0.7 + Math.random() * 0.6);
+      this.audio.disturbance(lerp(3, 0.8, this.dread));
+    }
+
+    if (this.dread > 0.72 && !this.seen.has('dread-told')) {
+      this.seen.add('dread-told');
+      this.ui.flashPrompt('Hold F — pray');
+    }
+  }
+
+  // How much the walk itself resists him. Never a wall — he can always push on,
+  // it just costs him the will to do it.
+  get dreadDrag() {
+    return 1 - 0.72 * clamp((this.dread - 0.55) / 0.45, 0, 1);
   }
 
   /* ---------------------------------------------------------------- prayer */
@@ -262,22 +332,33 @@ export class Game {
 
     // Record state: it works, and it takes something to do it.
     this.audio.quiet(6);
-    this.calm = 6;
-    this.blockCleared = true;
+    this.calm = 12;
+    this.dread = 0;
     this.presence.vis = 0;
     this.say(LINES.prayCold);
 
     if (this.memoriesLost < MEMORIES.length) {
-      const m = MEMORIES[this.memoriesLost++];
-      this.say([['', m.soft]], 2.4);
-      this.say(LINES.memoryLost, 6.0);
-      this.say([['', m.true]], 7.4);
-      const slot = Math.min(this.memoriesLost - 1, 2);
-      if (!this.shapeNoteUsed[slot] && (this.memoriesLost === 1 || this.memoriesLost === 4)) {
+      const i = this.memoriesLost++;
+      const m = MEMORIES[i];
+      // The soft version was seeded hours ago, out on the trail. If the player
+      // somehow never heard it, show it now so the correction still has a target.
+      let at = 2.2;
+      if (!this.seeded.has(i)) { this.say([['', m.soft]], at); at += 4.2; }
+      this.say(LINES.memoryLost, at);
+      this.say([['', m.true]], at + 1.4);
+      const slot = Math.min(i, 2);
+      if (!this.shapeNoteUsed[slot] && (i === 0 || i === 3)) {
         this.shapeNoteUsed[slot] = true;
-        setTimeout(() => this.audio.shapeNote(slot), 7200);
+        this.after(at + 6, () => this.audio.shapeNote(slot));
       }
     }
+  }
+
+  // Establish the comfortable version of a memory, long before prayer takes it.
+  seedMemory(i) {
+    if (this.seeded.has(i) || i >= MEMORIES.length) return;
+    this.seeded.add(i);
+    this.say([['', MEMORIES[i].soft]], 1.5);
   }
 
   /* ------------------------------------------------------------- movement */
@@ -295,7 +376,7 @@ export class Game {
       fwd /= len; strafe /= len;
       const fx = -Math.sin(this.p.yaw), fz = -Math.cos(this.p.yaw);
       const rx = Math.cos(this.p.yaw), rz = -Math.sin(this.p.yaw);
-      const speed = WALK * (this.loop >= 3 ? 0.92 : 1);
+      const speed = WALK * (this.loop >= 3 ? 0.92 : 1) * this.dreadDrag;
       let nx = this.p.x + (fx * fwd + rx * strafe) * speed * dt;
       let nz = this.p.z + (fz * fwd + rz * strafe) * speed * dt;
 
@@ -310,17 +391,6 @@ export class Game {
         nx = px + tnx * clampedLat; nz = pz + tnz * clampedLat;
       }
 
-      // Something in the fog, on the later loops, in the state where it is real.
-      if (this.blockAhead() && pr.s > this.blockAt()) {
-        const [px, pz] = this.trail.at(this.blockAt());
-        nx = px; nz = pz;
-        if (this.blockNag === undefined || this.blockNag <= 0) {
-          this.blockNag = 3.5;
-          this.audio.disturbance(1);
-          this.ui.flashPrompt('Hold F — pray');
-        }
-      }
-
       const s = clamp(this.trail.project(nx, nz).s, -8, this.trail.length);
       if (s > -8) { this.p.x = nx; this.p.z = nz; }
 
@@ -331,15 +401,7 @@ export class Game {
         this.audio.step(this.trail.project(this.p.x, this.p.z).s < this.trail.fromMiles(0.16));
       }
     }
-    if (this.blockNag > 0) this.blockNag -= dt;
-
     this.checkStops();
-  }
-
-  blockAt() { return this.trail.fromMiles(0.43); }
-
-  blockAhead() {
-    return this.loop >= 2 && this.state === 'record' && !this.blockCleared && this.outbound;
   }
 
   /* ------------------------------------------------------ trail milestones */
@@ -347,8 +409,16 @@ export class Game {
     const pr = this.trail.project(this.p.x, this.p.z);
     const mile = this.trail.toMiles(pr.s);
     this.mile = mile;
+    this.maxMile = Math.max(this.maxMile, mile);
 
     const once = (key, fn) => { if (!this.seen.has(key)) { this.seen.add(key); fn(); } };
+
+    // The four comfortable versions are laid down here, across the whole walk,
+    // so that prayer has something of his to take later.
+    if (mile > 0.04) once('seed0', () => this.seedMemory(0));
+    if (mile > 0.13) once('seed1', () => this.seedMemory(1));
+    if (mile > 0.33) once('seed2', () => this.seedMemory(2));
+    if (mile > 0.45) once('seed3', () => this.seedMemory(3));
 
     if (mile > 0.09) once('boardwalk' + this.loop, () => {
       if (this.loop === 1) this.say(LINES.boardwalk);
@@ -359,7 +429,7 @@ export class Game {
     if (mile > 0.31) once('grave2', () => this.say(LINES.grave2, 2.0));
     if (mile > 0.39 && this.state === 'record') once('field', () => {
       this.say(LINES.field);
-      if (!this.shapeNoteUsed[1]) { this.shapeNoteUsed[1] = true; setTimeout(() => this.audio.shapeNote(1), 9000); }
+      if (!this.shapeNoteUsed[1]) { this.shapeNoteUsed[1] = true; this.after(9, () => this.audio.shapeNote(1)); }
     });
 
     if (mile > 0.478) {
@@ -377,7 +447,6 @@ export class Game {
         this.loop++;
         this.reachedBridge = false;
         this.outbound = true;
-        this.blockCleared = false;
         this.seen.delete('bridge' + this.loop);
         if (this.loop === 3) {
           // Loop three strips the wildlife entirely. Removing sound is the scare.
@@ -530,6 +599,7 @@ export class Game {
     if (this.phase === 'gate') this.updateGate(dt);
     if (this.phase === 'gate' || this.phase === 'walk') {
       if (!this.ui.readerOpen) this.updateWalk(dt);
+      this.updateDread(dt);
       this.updatePrayer(dt);
       this.updateEndingHolds(dt);
       this.updatePresence(dt);
@@ -541,9 +611,18 @@ export class Game {
     this.lightMix = lerp(this.lightMix, target, 1 - Math.pow(0.02, dt));
     if (this.calm > 0) this.calm -= dt;
 
+    // The field is audible before it is visible and stays audible behind him.
+    // It only exists in Record state, and it never approaches.
+    const inField = this.state === 'record' && this.phase === 'walk' &&
+                    this.mile > 0.34 && this.mile < 0.47;
+    this.audio.work = inField
+      ? clamp(1 - Math.abs(this.mile - 0.405) / 0.065, 0, 1)
+      : 0;
+
     this.flicker = 0.88 + Math.sin(now * 0.011) * 0.04 + Math.random() * 0.08;
     this.fade = lerp(this.fade, this.fadeTarget ?? 1, 1 - Math.pow(0.15, dt));
 
+    this.updateTimers(dt);
     this.audio.update(dt);
     this.ui.update(dt);
     this.render(now);
@@ -574,7 +653,7 @@ export class Game {
   render(now) {
     const legend = this.lightMix;
     const fogFar = this.drawDistance;
-    const sway = this.calm > 0 ? 0.25 : 1;
+    const sway = (this.calm > 0 ? 0.25 : 1) * (1 + this.dread * 1.6);
     const bob = Math.sin(this.bobPhase) * 0.035 * sway;
     const roll = Math.sin(this.bobPhase * 0.5) * 0.006 * sway;
     const breathe = Math.sin(now * 0.0016) * 0.012 * sway;

@@ -70,9 +70,63 @@ export class Audio {
 
     this.cicGain = cicGain;
 
+    // --- the layer underneath ----------------------------------------------
+    // 0.40, Record state only: a working landscape at night with the sound of it
+    // still going. Hoes into dirt, a cart axle, and people humming at a distance
+    // because that is what working at night sounds like. It is deliberately not
+    // frightening and it never comes closer — there is no chase here and no
+    // figure to see. The horror at this stop is that it is ordinary.
+    this.workGain = ctx.createGain();
+    this.workGain.gain.value = 0;
+    this.workGain.connect(this.master);
+
+    const humMix = ctx.createGain();
+    humMix.gain.value = 0.055;
+    humMix.connect(this.workGain);
+    for (const f of [146.8, 220.0]) {            // open fifth, no third, no verdict
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const swell = ctx.createOscillator();
+      swell.frequency.value = 0.07 + Math.random() * 0.05;
+      const swellG = ctx.createGain(); swellG.gain.value = 0.5;
+      const g = ctx.createGain(); g.gain.value = 0.5;
+      swell.connect(swellG).connect(g.gain);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 520;
+      o.connect(g).connect(lp).connect(humMix);
+      o.start(); swell.start();
+    }
+
+    this.work = 0;
+    this.workTimer = 0;
+
     // cricket frogs fire as one-shots on a loose timer
     this.frogTimer = 0;
     this.owlTimer = 18 + Math.random() * 20;
+  }
+
+  // A tool going into ground, heard from across a field.
+  workStrike() {
+    const ctx = this.ctx, t = ctx.currentTime;
+    const src = ctx.createBufferSource(); src.buffer = this.noise;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 300 + Math.random() * 200; bp.Q.value = 1.1;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.10, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 900;      // distance takes the top off
+    let tail = lp;
+    if (ctx.createStereoPanner) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = Math.random() * 1.6 - 0.8;
+      lp.connect(pan); tail = pan;
+    }
+    src.connect(bp).connect(g).connect(lp);
+    tail.connect(this.workGain);
+    src.start(t); src.stop(t + 0.3);
   }
 
   resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
@@ -80,8 +134,13 @@ export class Audio {
   update(dt) {
     if (!this.ready) return;
     const t = this.ctx.currentTime;
+    // Loop three has no bed at all — not a quieter one. The river goes too.
+    // What is left is Ray's own boots, and that is the whole scare.
     this.cicGain.gain.setTargetAtTime(0.05 * this.wildlife, t, 1.5);
-    this.waterGain.gain.setTargetAtTime(0.10 * (0.4 + 0.6 * this.wildlife), t, 1.5);
+    this.waterGain.gain.setTargetAtTime(0.10 * this.wildlife, t, 2.5);
+    if (this.workGain) {
+      this.workGain.gain.setTargetAtTime(0.9 * this.work, t, 2.0);
+    }
 
     if (this.wildlife > 0.05) {
       this.frogTimer -= dt;
@@ -93,6 +152,14 @@ export class Audio {
       if (this.owlTimer <= 0) {
         this.owlTimer = 25 + Math.random() * 35;
         this.owl(0.16);
+      }
+    }
+
+    if (this.work > 0.05) {
+      this.workTimer -= dt;
+      if (this.workTimer <= 0) {
+        this.workTimer = 0.55 + Math.random() * 0.5;   // a loose, unhurried rhythm
+        this.workStrike();
       }
     }
   }
