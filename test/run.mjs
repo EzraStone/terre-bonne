@@ -9,7 +9,6 @@
 //
 // Needs playwright and a chromium. Set CHROMIUM_PATH to override the binary.
 
-import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';

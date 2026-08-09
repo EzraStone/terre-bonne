@@ -106,10 +106,16 @@ src/ui.js           subtitles, reader, recorder, endings
 docs/design-doc.html  the source document
 ```
 
-Run them with `npm test` — it serves the game itself and drives a headless
-Chromium through every ending trigger, the belief rule, the dread/prayer loop
-and the settings that persist. Needs `npm i -D playwright`; set `CHROMIUM_PATH`
-to point at an existing browser.
+### Tests
+
+```
+npm test
+```
+
+Serves the game itself and drives a headless Chromium through every ending
+trigger, the belief rule, the dread/prayer loop, memory seeding, cue scheduling,
+the three loops, the field, pause, and the persisted settings — 52 assertions.
+Needs `npm i -D playwright`; set `CHROMIUM_PATH` to point at an existing browser.
 
 ### Render spec, as built
 
