@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERRE BONNE — Game Design Document</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --water:#0B0D0B;
+    --silt:#14170F;
+    --moss:#2E3729;
+    --bone:#D8D1C0;
+    --fog:#8A9083;
+    --lamp:#D99A3E;      /* the myth: candle, kerosene, the warm lie */
+    --record:#9FB6BE;    /* the record: cold, documented, true */
+    --display:"Fraunces",Georgia,"Times New Roman",serif;
+    --body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+    --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+    --measure:64ch;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--water);
+    color:var(--bone);
+    font-family:var(--body);
+    font-weight:300;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---- dither / grain overlay: the PS1 tell ---- */
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:9;
+    pointer-events:none;
+    opacity:.06;
+    background-image:
+      repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 2px),
+      repeating-linear-gradient(90deg, #fff 0 1px, transparent 1px 2px);
+    background-size:2px 2px, 2px 2px;
+    mix-blend-mode:overlay;
+  }
+
+  /* ---- SIGNATURE: draw-distance fog at the bottom of the viewport ---- */
+  .fog{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    height:38vh;
+    z-index:8;
+    pointer-events:none;
+    background:linear-gradient(to top,
+      var(--water) 0%,
+      rgba(11,13,11,.94) 22%,
+      rgba(11,13,11,.72) 45%,
+      rgba(11,13,11,.34) 70%,
+      rgba(11,13,11,0) 100%);
+  }
+
+  .wrap{
+    max-width:860px;
+    margin:0 auto;
+    padding:0 28px 46vh;
+    position:relative;
+    z-index:2;
+  }
+
+  /* ---- HERO ---- */
+  .hero{
+    min-height:96vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:14vh 0 6vh;
+  }
+  .slug{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--fog);
+    margin:0 0 3.5rem;
+  }
+  .coldopen{
+    font-family:var(--display);
+    font-variation-settings:"SOFT" 40,"WONK" 1,"opsz" 100;
+    font-weight:300;
+    font-size:clamp(1.45rem,4.4vw,2.35rem);
+    line-height:1.32;
+    margin:0;
+    max-width:22ch;
+    color:var(--bone);
+  }
+  .coldopen em{
+    font-style:italic;
+    color:var(--lamp);
+  }
+  .coldopen .beat{
+    display:block;
+    margin-top:1.6rem;
+    color:var(--record);
+  }
+  .title{
+    font-family:var(--display);
+    font-variation-settings:"SOFT" 0,"WONK" 1,"opsz" 144;
+    font-weight:700;
+    font-size:clamp(3.2rem,15vw,7.4rem);
+    line-height:.86;
+    letter-spacing:-.02em;
+    margin:5rem 0 .4rem;
+    color:var(--bone);
+    animation:jitter 2.4s steps(1,end) infinite;
+  }
+  @keyframes jitter{
+    0%,100%{transform:translate(0,0);}
+    12%{transform:translate(.7px,-.6px);}
+    24%{transform:translate(-.6px,.5px);}
+    37%{transform:translate(0,0);}
+    62%{transform:translate(.5px,.7px);}
+    74%{transform:translate(-.7px,0);}
+    88%{transform:translate(0,0);}
+  }
+  .subtitle{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--fog);
+    margin:0;
+  }
+
+  /* ---- structure ---- */
+  section{
+    padding:9vh 0 0;
+    opacity:0;
+    transform:translateY(22px);
+    filter:blur(6px);
+    transition:opacity .9s ease,transform .9s ease,filter .9s ease;
+  }
+  section.in{opacity:1;transform:none;filter:none;}
+  .hero{opacity:1;transform:none;filter:none;}
+
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:var(--moss);
+    margin:0 0 .9rem;
+    padding-bottom:.9rem;
+    border-bottom:1px solid var(--moss);
+  }
+  h2{
+    font-family:var(--display);
+    font-variation-settings:"SOFT" 20,"WONK" 1,"opsz" 100;
+    font-weight:500;
+    font-size:clamp(1.7rem,5vw,2.5rem);
+    line-height:1.1;
+    margin:0 0 1.6rem;
+  }
+  h3{
+    font-family:var(--body);
+    font-weight:500;
+    font-size:1.02rem;
+    letter-spacing:.01em;
+    margin:2.4rem 0 .55rem;
+    color:var(--bone);
+  }
+  p{max-width:var(--measure);margin:0 0 1.15rem;color:var(--bone);}
+  p.quiet{color:var(--fog);}
+  ul{max-width:var(--measure);margin:0 0 1.15rem;padding-left:1.1rem;}
+  li{margin-bottom:.5rem;}
+  strong{font-weight:500;color:var(--bone);}
+  em.myth{font-style:normal;color:var(--lamp);}
+  em.rec{font-style:normal;color:var(--record);}
+
+  .lede{
+    font-family:var(--display);
+    font-variation-settings:"SOFT" 40,"WONK" 1,"opsz" 72;
+    font-weight:300;
+    font-size:clamp(1.15rem,3.2vw,1.42rem);
+    line-height:1.45;
+    color:var(--bone);
+    max-width:48ch;
+    margin-bottom:2rem;
+  }
+
+  /* ---- two-state comparison: the core mechanic ---- */
+  .states{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1px;
+    background:var(--moss);
+    border:1px solid var(--moss);
+    margin:1.5rem 0 2rem;
+  }
+  .state{background:var(--silt);padding:1.4rem 1.3rem;}
+  .state h4{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    margin:0 0 1rem;
+    font-weight:500;
+  }
+  .state.myth h4{color:var(--lamp);}
+  .state.rec h4{color:var(--record);}
+  .state p{font-size:15px;margin-bottom:.8rem;}
+  .state p:last-child{margin-bottom:0;}
+
+  /* ---- trail: distance markers, used only where distance is real ---- */
+  .trail{border-left:1px solid var(--moss);margin:1.8rem 0 1rem;padding-left:0;}
+  .stop{position:relative;padding:0 0 2.1rem 1.7rem;}
+  .stop::before{
+    content:"";
+    position:absolute;
+    left:-4px;top:.55rem;
+    width:7px;height:7px;
+    background:var(--fog);
+  }
+  .stop.bridge::before{background:var(--lamp);}
+  .mi{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--fog);
+    display:block;
+    margin-bottom:.25rem;
+  }
+  .stop h3{margin:0 0 .35rem;}
+  .stop p{font-size:15.5px;margin-bottom:0;color:var(--fog);}
+  .stop p b{color:var(--bone);font-weight:400;}
+
+  /* ---- endings ---- */
+  .ending{
+    border-top:1px solid var(--moss);
+    padding:1.5rem 0 .4rem;
+  }
+  .ending .tag{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    color:var(--fog);
+  }
+  .ending h3{margin-top:.4rem;font-size:1.15rem;}
+
+  /* ---- spec tables: mono, because this is build data ---- */
+  .spec{
+    font-family:var(--mono);
+    font-size:13.5px;
+    line-height:1.55;
+    border-top:1px solid var(--moss);
+    margin:1.2rem 0 2rem;
+    max-width:var(--measure);
+  }
+  .row{
+    display:grid;
+    grid-template-columns:minmax(120px,.9fr) 2fr;
+    gap:1.2rem;
+    padding:.7rem 0;
+    border-bottom:1px solid var(--moss);
+  }
+  .row span:first-child{color:var(--fog);}
+  .row span:last-child{color:var(--bone);}
+
+  .note{
+    border-left:2px solid var(--lamp);
+    padding:.2rem 0 .2rem 1.1rem;
+    margin:1.8rem 0;
+    max-width:var(--measure);
+  }
+  .note p{font-size:15.5px;color:var(--fog);margin-bottom:.6rem;}
+  .note p:last-child{margin-bottom:0;}
+  .note.care{border-left-color:var(--record);}
+
+  footer{
+    padding:8vh 0 4vh;
+    border-top:1px solid var(--moss);
+    margin-top:8vh;
+    font-family:var(--mono);
+    font-size:11.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--moss);
+  }
+
+  @media (max-width:620px){
+    .states{grid-template-columns:1fr;}
+    .row{grid-template-columns:1fr;gap:.15rem;}
+    .wrap{padding:0 20px 40vh;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto;}
+    .title{animation:none;}
+    section{opacity:1;transform:none;filter:none;transition:none;}
+  }
+  :focus-visible{outline:2px solid var(--lamp);outline-offset:3px;}
+</style>
+</head>
+<body>
+<div class="fog" aria-hidden="true"></div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="slug">Design document · Draft 01 · Solo build · itch.io</p>
+    <p class="coldopen">
+      We heard a laugh before we ever got on the trail. <em>Barred owl</em>, somebody said, and we all agreed, because it was 2 a.m. and agreeing was easier.
+      <span class="beat">Then we heard it again.</span>
+    </p>
+    <h1 class="title">TERRE<br>BONNE</h1>
+    <p class="subtitle">A low-poly folk horror game · Bellamy Bridge, Jackson County, Florida</p>
+  </header>
+
+  <section>
+    <p class="eyebrow">Premise</p>
+    <h2>The good earth</h2>
+    <p class="lede">A grieving man walks a half-mile nature trail at two in the morning looking for a ghost story, and finds the history the ghost story was invented to cover.</p>
+    <p><strong>Terre Bonne</strong> — "good earth" — was the real name of the plantation that stood where the trail now runs. The name is the whole game in two words: a pretty thing said about ground that does not deserve it.</p>
+    <p>The player is <strong>Ray Dillard</strong>, 34, eight months a widower. His wife Junie was the one with the faith; he went to church for her and stopped going when she died. He drove down from Dothan after watching a local documentary about the ghost of Bellamy Bridge — a young woman said to wander the swamp looking for her husband. He is not here for a scare. He is here because he wants to know whether the dead look for us, and he cannot ask anyone that question out loud.</p>
+    <p class="quiet">He brings a hand recorder so he'll have proof. The recorder is the reason the ending works.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Design pillars</p>
+    <h2>Three rules that decide every argument</h2>
+    <h3>1 — The limitation is the monster</h3>
+    <p>Draw distance, fog culling, and 240p are not nostalgia. They are the reason you cannot confirm what you saw. Nothing in this game is ever rendered clearly enough to settle. Any feature request that increases visual clarity is answered no.</p>
+    <h3>2 — Sadness is the payload, horror is the delivery</h3>
+    <p>Every scare must leave something behind that hurts after the fear drains out. If a moment is only frightening, it gets cut. The target emotion at the credits is not relief — it is the quiet after a funeral.</p>
+    <h3>3 — The comfortable version is the trap</h3>
+    <p>The player is always free to accept the pretty explanation. Doing so is easy, safe, warmly lit, and leads nowhere. The game never punishes it with a jump scare. It punishes it with a shorter game.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Core mechanic</p>
+    <h2>Two histories, one flashlight</h2>
+    <p>Ray carries a flashlight whose <strong>color temperature is the only HUD in the game</strong>. There is no meter, no number, no belief bar. The light tells you what you currently believe, and the world renders accordingly.</p>
+    <p>Belief shifts through artifacts. Nearly every artifact exists in a pair — an interpretive plaque and the document underneath it. Read the plaque, the light warms. Read the letter, the ledger, the obituary, the light goes cold. You can read both. You cannot hold both.</p>
+
+    <div class="states">
+      <div class="state myth">
+        <h4>Legend · 2200K</h4>
+        <p>Warm amber cone. Draw distance ≈ 20 m. Fog reads as romantic haze. A rose garden that was never here. A bride in white at the treeline, beautiful, sorrowful, always at the edge of sight.</p>
+        <p>Comfortable. Navigable. And the trail loops — half a mile out, half a mile back, forever. New geometry will not open in this state.</p>
+      </div>
+      <div class="state rec">
+        <h4>Record · 5600K</h4>
+        <p>Cold blue-white. Draw distance ≈ 12 m. The haze becomes something you are inside of. No bride. Sounds instead of sights.</p>
+        <p>Ugly, close, and the only state where the trail admits it is longer than the sign says. Every new path in the game opens here.</p>
+      </div>
+    </div>
+
+    <h3>What the record actually says</h3>
+    <p>The historical spine is documented, and it is sadder than the folklore. Elizabeth Jane Croom Bellamy died of fever in May 1837 at eighteen. Her infant son Alexander died a week later and was buried beside her. Her husband Samuel never remarried, drank for fifteen years, and took his own life at Chattahoochee Landing; his request to be buried next to her was ignored and he lies in an unmarked grave. The burning-bride version — the candle, the gown, the wedding night — was grafted on in the twentieth century from a novel.</p>
+    <p>And beneath all of it: <em class="rec">Terre Bonne was a working plantation.</em> Cotton, rice, sugar, in fields that are swamp again now. The people who cleared that ground are on no plaque and in no ghost tour. The final revelation of the game is not that the legend is false. It is that a whole town built a beautiful sad story about one white girl and stood it directly on top of everyone else.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Faith system</p>
+    <h2>Prayer costs a memory</h2>
+    <p>Hold the prayer button and Ray prays. It is the only "ability" in the game and there is no combat to use it in.</p>
+    <p>In <em class="myth">Legend</em> state, prayer does nothing mechanical. The breathing steadies, the camera sway calms, the presence does not move. It is comfort, and comfort is all it is.</p>
+    <p>In <em class="rec">Record</em> state, prayer works. It quiets the thing in the fog and opens the way forward. But each true prayer takes a memory of Junie and <strong>replaces the softened version with the accurate one</strong>. The first prayer costs him the way he remembers her laugh. The fourth costs him the last thing he actually said to her, which was not kind.</p>
+    <p>The thesis, stated mechanically: faith aimed at a comfortable lie is only warmth. Faith aimed at what is true does something, and it takes from you to do it.</p>
+    <div class="note">
+      <p><strong>The laugh.</strong> The audio motif fires every time Ray accepts an easy explanation — the barred owl, the trick of the light, the story the sign tells. It is mixed as genuinely ambiguous the first time, seventy percent owl. By the third occurrence it is unmistakably a young woman, and it is close.</p>
+      <p>In the final act, Ray plays back the tape from the parking area at 0.00 — the very first recording, made before anything happened. The laugh is on it. It was always on it.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Structure · the trail is 0.5 miles and the game is not</p>
+    <h2>Walkthrough</h2>
+    <p class="quiet">Distance markers are diegetic — they are the trail's own signage, and their unreliability is the point. The phone clock reads 2:00 and never moves.</p>
+
+    <div class="trail">
+      <div class="stop">
+        <span class="mi">0.00 mi</span>
+        <h3>The gate</h3>
+        <p><b>Cold open.</b> Gravel lot, one truck, no other cars. Ray starts the recorder. The laugh. He says "barred owl" into the mic — the player is not given a choice, because at 2 a.m. nobody is. Then it happens again, and the title card lands on the second one.</p>
+      </div>
+      <div class="stop">
+        <span class="mi">0.10 mi</span>
+        <h3>The boardwalk</h3>
+        <p><b>Teaches the light.</b> First plaque-and-document pair: the trail's own interpretive sign versus a photocopied fever obituary someone left tucked behind it. Both readable. The player learns the flashlight changes and is told nothing about what that means.</p>
+      </div>
+      <div class="stop">
+        <span class="mi">0.20 mi</span>
+        <h3>The fork that is not on the map</h3>
+        <p><b>First impossible space.</b> In Legend the fork is not there. In Record it is, and the paper map in Ray's pocket does not update. This is the game's honest handshake: the geometry is lying, and it will keep lying.</p>
+      </div>
+      <div class="stop">
+        <span class="mi">0.30 mi</span>
+        <h3>The grove</h3>
+        <p><b>The grave.</b> Elizabeth's stone, and beside it a smaller one. The smaller one is the moment the game stops being about a ghost story. Longest artifact cluster; the letters between Samuel and Elizabeth live here.</p>
+      </div>
+      <div class="stop">
+        <span class="mi">0.40 mi</span>
+        <h3>Terre Bonne</h3>
+        <p><b>The layer underneath.</b> Record state only. The swamp thins into a field that has not existed in 160 years. No figures, no chase, no scare — a working landscape at night with the sound of it still going. The plantation ledger is here.</p>
+      </div>
+      <div class="stop bridge">
+        <span class="mi">0.50 mi</span>
+        <h3>The bridge</h3>
+        <p><b>Act break.</b> Steel truss, 1914, 119 feet, no deck left — the planks rotted into the river decades ago. You cannot cross it. You turn around. And the walk back is longer than the walk out.</p>
+      </div>
+      <div class="stop">
+        <span class="mi">0.50 mi</span>
+        <h3>Again</h3>
+        <p><b>Loops two and three.</b> Same trail, more of it each time, clock still 2:00. Artifacts you already read now read differently. Loop three strips the ambient wildlife entirely — the swamp goes silent, which is far worse than adding a sound.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Endings</p>
+    <h2>Four ways off the trail</h2>
+
+    <div class="ending">
+      <span class="tag">Ending 01 · Legend</span>
+      <h3>Barred Owl</h3>
+      <p>Walk out having accepted the story the town tells. The clock resumes. Dawn, birdsong, a warm and genuinely pleasant walk to the truck. Then the credits play the recorder, unedited, and the laugh is on the 2:00 file. Roughly 35 minutes. The player learned nothing and the game does not scold them for it.</p>
+    </div>
+
+    <div class="ending">
+      <span class="tag">Ending 02 · Record · primary</span>
+      <h3>The Register</h3>
+      <p>Requires all ledger fragments. At the bridge, Ray reads the names aloud into the recorder. The presence at the fog line was never one woman and never only her. She goes quiet — not banished, <em class="rec">answered</em>. He walks out at first light with an accurate memory of his wife instead of a kind one, which is worse and which is his. No music over the credits.</p>
+    </div>
+
+    <div class="ending">
+      <span class="tag">Ending 03 · Refusal</span>
+      <h3>Always and Forever</h3>
+      <p>Refuse to leave on loop three. The camera detaches from Ray and pulls back to the trailhead, where it holds on a distant light moving in the trees. Title card: the date, four years later. You are now the thing the next visitor will fail to explain.</p>
+    </div>
+
+    <div class="ending">
+      <span class="tag">Ending 04 · Hidden</span>
+      <h3>0.00</h3>
+      <p>At the gate, after the second laugh, turn around and drive home. The game ends in ninety seconds. It is the only ending where nobody is hurt, and it is deliberately the easiest one to miss.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Art direction</p>
+    <h2>Render spec</h2>
+    <div class="spec">
+      <div class="row"><span>Internal res</span><span>320 × 240, integer upscale · optional 640 × 480 unlock</span></div>
+      <div class="row"><span>Texture mapping</span><span>Affine, no perspective correction — let it warp</span></div>
+      <div class="row"><span>Vertex handling</span><span>Screen-space position snapping (PS1 jitter)</span></div>
+      <div class="row"><span>Color</span><span>15-bit, ordered Bayer 4×4 dither</span></div>
+      <div class="row"><span>Lighting</span><span>Baked vertex lighting. No dynamic shadows anywhere</span></div>
+      <div class="row"><span>Textures</span><span>64–128 px, point filtering, no mipmaps</span></div>
+      <div class="row"><span>Draw distance</span><span>Legend 20 m · Record 12 m · loop 3 drops to 8 m</span></div>
+      <div class="row"><span>Budget</span><span>Props 80–300 tris · figure 600 tris · one figure total</span></div>
+      <div class="row"><span>Palette</span><span>Tannin black, silt, moss, bone, lamp amber, record blue</span></div>
+    </div>
+    <p><strong>Hard rule:</strong> Elizabeth is never rendered inside the fog plane. She exists only at the draw-distance boundary, as silhouette. If the player runs at her, the fog resolves to empty trail. She is not a model the player is allowed to look at, and there is no sequence in the game where that changes.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Audio direction</p>
+    <h2>The most important department</h2>
+    <ul>
+      <li><strong>Field-record the real thing.</strong> Chipola swamp at night: cicadas, cricket frogs, water, and an actual barred owl. Their "who cooks for you" call genuinely cackles like a person — that is why the in-fiction denial is plausible, and it should be a real recording, not a library asset.</li>
+      <li><strong>The laugh</strong> is a barred owl layered under a young woman's laugh, pitch-shifted. Mix ratio shifts across the three occurrences from 70/30 owl to 10/90. Never resolved in dialogue.</li>
+      <li><strong>Music: unaccompanied shape-note singing.</strong> Sacred harp is authentic to the Florida–Georgia line, it is loud and modal and strange to modern ears, and one vocalist is affordable for a solo project. Use it for exactly three moments and never as background.</li>
+      <li><strong>Recorder playback</strong> is band-passed and diegetic, always audible from the device in Ray's hand rather than from the mix. The player should have to hold still and listen.</li>
+      <li><strong>Loop three has no wildlife bed at all.</strong> Removing sound is the scare.</li>
+    </ul>
+  </section>
+
+  <section>
+    <p class="eyebrow">Scope</p>
+    <h2>Build plan for one person</h2>
+    <div class="spec">
+      <div class="row"><span>Playtime</span><span>70–90 min, one sitting, replay for endings</span></div>
+      <div class="row"><span>Release</span><span>itch.io, pay-what-you-want with $4 floor</span></div>
+      <div class="row"><span>Engine</span><span>Any. Godot cheapest, Unity most PS1-shader tutorials</span></div>
+      <div class="row"><span>Environments</span><span>1 modular kit — boardwalk, cypress, palmetto, water plane, truss</span></div>
+      <div class="row"><span>Artifacts</span><span>≈ 12 readable items, 6 plaque/document pairs</span></div>
+      <div class="row"><span>Characters</span><span>1 silhouette. No NPCs. No enemies. No inventory UI</span></div>
+      <div class="row"><span>Voice</span><span>Ray only. Dev can perform it. ~400 lines</span></div>
+      <div class="row"><span>Timeline</span><span>Slice 0.00–0.20 → graybox full trail → art → audio → endings → playtest · 4–6 months part-time</span></div>
+    </div>
+    <p><strong>Build the vertical slice first and stop.</strong> Gate 0.00 through 0.20 with working flashlight states and the laugh is roughly 15 minutes of play and proves the entire game. If the light-temperature mechanic does not read to a playtester without explanation, that is the thing to fix before another asset is made.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Handle with care</p>
+    <h2>Two things this document is obligated to say</h2>
+    <div class="note care">
+      <p><strong>On the plantation.</strong> Terre Bonne held enslaved people. Using that as a horror twist is easy to do badly. The rule for this project: <em class="rec">the enslaved are never the monster, never a jump scare, and never a ghost that menaces the player.</em> The horror is the erasure — a town that built a beautiful sad story about one girl and set it on top of everyone else. Ledger names in the game should be fictional composites, not real individuals lifted from archives without descendant consent. Consult Jackson County historical resources before writing that act.</p>
+      <p><strong>On the real people.</strong> Elizabeth, Samuel, Ann, and Edward Bellamy existed, and Samuel's death is documented, not invented. Depict what the record supports and fictionalize past that line — including, if the story pushes further, changing the surname outright.</p>
+    </div>
+    <p><strong>Content warnings for the store page:</strong> bereavement and grief, suicide (historical, offscreen), infant death, slavery and its erasure, isolation, darkness, sudden loud audio at two marked points.</p>
+  </section>
+
+  <footer>
+    Terre Bonne · Design doc draft 01 · Working title, alternates: Half Mile · The Long Moss · Always and Forever
+  </footer>
+
+</div>
+
+<script>
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  },{threshold:.12});
+  document.querySelectorAll('section').forEach(s=>io.observe(s));
+</script>
+</body>
+</html>

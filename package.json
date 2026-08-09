@@ -1,0 +1,11 @@
+{
+  "name": "terre-bonne",
+  "version": "0.1.0",
+  "description": "A low-poly folk horror walk. Bellamy Bridge, Jackson County, Florida.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes http-server -p 8099 -c-1 .",
+    "dev": "npx --yes http-server -p 8099 -c-1 ."
+  }
+}

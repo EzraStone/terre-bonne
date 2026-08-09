@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERRE BONNE</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230B0D0B'/%3E%3Ccircle cx='8' cy='8' r='3' fill='%23D99A3E'/%3E%3C/svg%3E">
+<!-- The design doc's typefaces. If they fail to load (offline, itch.io zip),
+     the stacks in style.css fall back to system serif/sans/mono and nothing breaks. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<canvas id="screen"></canvas>
+
+<!-- everything below is DOM UI drawn over the 240p frame -->
+<div id="ui" aria-live="polite">
+
+  <!-- title / boot -->
+  <section id="title" class="panel show">
+    <p class="slug">Jackson County, Florida &middot; 2:00 a.m.</p>
+    <h1 class="bigtitle">TERRE<br>BONNE</h1>
+    <p class="subtitle">A low-poly folk horror walk</p>
+    <div class="menu">
+      <button id="btn-start" class="mbtn">Begin</button>
+      <button id="btn-cw" class="mbtn ghost">Content warnings</button>
+      <button id="btn-res" class="mbtn ghost">Internal res: 320 &times; 240</button>
+    </div>
+    <p class="tiny quiet">WASD walk &middot; mouse look &middot; E read &middot; hold F pray &middot; R recorder &middot; Esc release cursor</p>
+  </section>
+
+  <!-- content warnings -->
+  <section id="cw" class="panel">
+    <p class="eyebrow">Handle with care</p>
+    <p class="body">This game contains bereavement and grief, suicide (historical, offscreen), infant death,
+      slavery and its erasure, isolation, darkness, and sudden loud audio at two marked points.</p>
+    <p class="body quiet">The enslaved people of Terre Bonne are never the monster, never a jump scare, and never
+      a ghost that menaces the player. The names in the ledger are fictional composites. The horror here is the
+      erasure &mdash; a town that built a beautiful sad story about one girl and set it on top of everyone else.</p>
+    <div class="menu"><button id="btn-cw-back" class="mbtn">Back</button></div>
+  </section>
+
+  <!-- in-world HUD -->
+  <div id="hud">
+    <div id="mile" class="mono"></div>
+    <div id="clock" class="mono">2:00 AM</div>
+  </div>
+
+  <div id="prompt" class="mono"></div>
+  <div id="subtitle"></div>
+  <div id="prayerbar"><i></i></div>
+
+  <!-- reading overlay -->
+  <section id="reader" class="panel reader">
+    <p class="eyebrow" id="reader-kind"></p>
+    <h2 id="reader-title"></h2>
+    <div id="reader-body"></div>
+    <p class="tiny quiet">E / Esc &mdash; put it down</p>
+  </section>
+
+  <!-- recorder -->
+  <div id="recorder">
+    <div class="mono" id="rec-label">RECORDER</div>
+    <div id="rec-lines"></div>
+  </div>
+
+  <!-- ending / credits -->
+  <section id="ending" class="panel ending">
+    <p class="eyebrow" id="ending-tag"></p>
+    <h2 id="ending-title"></h2>
+    <div id="ending-body"></div>
+    <div class="menu"><button id="btn-again" class="mbtn">Walk it again</button></div>
+  </section>
+
+  <div id="fadeout"></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
